@@ -1,0 +1,40 @@
+{
+  "cli": {
+    "version": ">= 15.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://communicator.cvr.ac.in/api/v1",
+        "EXPO_PUBLIC_USE_MOCKS": "false"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://communicator.cvr.ac.in/api/v1",
+        "EXPO_PUBLIC_USE_MOCKS": "false"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "autoIncrement": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://communicator.cvr.ac.in/api/v1",
+        "EXPO_PUBLIC_USE_MOCKS": "false"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
