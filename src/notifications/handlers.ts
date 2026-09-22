@@ -1,33 +1,25 @@
-import * as Notifications from 'expo-notifications'
-import { type EventSubscription } from 'expo-modules-core'
+import { getMessaging, onMessage, type RemoteMessage } from '@react-native-firebase/messaging'
+import notifee, { EventType } from '@notifee/react-native'
 import { router } from 'expo-router'
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { AppState } from 'react-native'
 import { useNotificationsStore } from './store'
 import { useAuthStore } from '../auth/store'
 import { client } from '../api/client'
+import { ensureDefaultChannel } from './channel'
 
-// Configure foreground notification display
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-})
-
-function storeNotification(notification: Notifications.Notification) {
-  const { request } = notification
-  const data = request.content.data as Record<string, string> | undefined
+function storeNotification(id: string, data: Record<string, string> | undefined) {
+  // Circulars aren't logged server-side and have no place in the
+  // Notifications feed — their content lives only in GET /circulars, and
+  // the circular screens read straight from there.
+  if (data?.type === 'circular') return
   useNotificationsStore.getState().add({
-    id: request.identifier,
-    title: request.content.title ?? '',
-    body: request.content.body ?? '',
+    id,
+    title: data?.title ?? '',
+    body: data?.body ?? '',
     type: data?.type ?? 'general',
     data,
-    created_at: new Date(notification.date).toISOString(),
+    created_at: new Date().toISOString(),
   })
 }
 
@@ -58,6 +50,26 @@ function handleNotificationTap(data: Record<string, string> | undefined) {
   }
 }
 
+// FCM messages here are data-only (see backend send_fcm_push) — nothing
+// auto-displays them, so this is the single display path for every app
+// state. The background/quit-state equivalent lives in index.js and calls
+// this same notifee.displayNotification shape, so there's exactly one way
+// a push ever becomes a visible notification.
+async function displayNotification(data: Record<string, string> | undefined, id: string) {
+  await ensureDefaultChannel()
+  await notifee.displayNotification({
+    id,
+    title: data?.title,
+    body: data?.body,
+    android: {
+      channelId: 'default',
+      pressAction: { id: 'default' },
+      sound: 'default',
+    },
+    data,
+  })
+}
+
 async function syncFromServer() {
   if (!useAuthStore.getState().isAuthenticated) return
   try {
@@ -79,15 +91,30 @@ async function syncFromServer() {
 }
 
 export function useNotificationHandlers() {
-  const responseListener = useRef<EventSubscription | null>(null)
-  const receivedListener = useRef<EventSubscription | null>(null)
-
   useEffect(() => {
-    // Handle notification tap when app is in background/killed
-    Notifications.getLastNotificationResponseAsync().then((response) => {
-      if (response) {
-        storeNotification(response.notification)
-        const data = response.notification.request.content.data as Record<string, string> | undefined
+    // App in foreground when the push arrives.
+    const unsubOnMessage = onMessage(getMessaging(), async (remoteMessage: RemoteMessage) => {
+      const data = remoteMessage.data as Record<string, string> | undefined
+      await displayNotification(data, remoteMessage.messageId ?? String(Date.now()))
+    })
+
+    // Tap on a notification while the app is running (foreground, or was
+    // background and this tap just brought it forward).
+    const unsubForegroundEvent = notifee.onForegroundEvent(({ type, detail }) => {
+      if (type === EventType.PRESS && detail.notification) {
+        const data = detail.notification.data as Record<string, string> | undefined
+        storeNotification(detail.notification.id ?? '', data)
+        handleNotificationTap(data)
+      }
+    })
+
+    // App was fully killed and got launched by a notification tap
+    // (notifee-displayed notification, so notifee is the source of truth
+    // for the tap event — not messaging's own getInitialNotification).
+    notifee.getInitialNotification().then((initial) => {
+      if (initial?.notification) {
+        const data = initial.notification.data as Record<string, string> | undefined
+        storeNotification(initial.notification.id ?? '', data)
         handleNotificationTap(data)
       }
     })
@@ -100,28 +127,10 @@ export function useNotificationHandlers() {
       if (state === 'active') syncFromServer()
     })
 
-    // Save every notification the device receives (foreground or background)
-    // to the local store — the Notifications screen reads from there instead
-    // of hitting the backend.
-    receivedListener.current = Notifications.addNotificationReceivedListener((notification) => {
-      storeNotification(notification)
-    })
-
-    // Handle notification tap when app is in foreground
-    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-      storeNotification(response.notification)
-      const data = response.notification.request.content.data as Record<string, string> | undefined
-      handleNotificationTap(data)
-    })
-
     return () => {
+      unsubOnMessage()
+      unsubForegroundEvent()
       appStateSub.remove()
-      if (responseListener.current) {
-        responseListener.current.remove()
-      }
-      if (receivedListener.current) {
-        receivedListener.current.remove()
-      }
     }
   }, [])
 }

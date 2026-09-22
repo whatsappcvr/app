@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
 import { Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { StatusBar, AppState } from 'react-native'
+import { StatusBar, AppState, View } from 'react-native'
 import { useNotificationHandlers } from '../../src/notifications/handlers'
 import { registerForPushNotifications } from '../../src/notifications/register'
-import { WardSwitcher, BackButton, AppBrand } from '../../src/components/Header'
+import { WardSwitcher, BackButton, AppBrand, NotificationBell } from '../../src/components/Header'
 
 const SCREEN_TITLES: Record<string, string> = {
   attendance: 'Attendance',
@@ -45,7 +45,12 @@ export default function AppLayout() {
             headerTitle: title,
             headerTitleStyle: { fontSize: 17, fontWeight: '700', color: '#10213F' },
             headerLeft: () => (isHome ? <AppBrand /> : <BackButton />),
-            headerRight: () => <WardSwitcher compact />,
+            headerRight: () => (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <NotificationBell />
+                <WardSwitcher compact />
+              </View>
+            ),
             headerRightContainerStyle: { flexShrink: 0 },
             headerStyle: { backgroundColor: '#fff', elevation: 0, shadowOpacity: 0 },
           }
@@ -80,7 +85,7 @@ export default function AppLayout() {
           }}
         />
         {/* Hidden tabs - accessible via navigation only */}
-        <Tabs.Screen name="payment" options={{ href: null }} />
+        <Tabs.Screen name="payment" options={{ href: null, headerShown: false }} />
         <Tabs.Screen name="mentor" options={{ href: null }} />
         <Tabs.Screen name="circulars" options={{ href: null, headerShown: false }} />
         <Tabs.Screen name="notifications" options={{ href: null }} />

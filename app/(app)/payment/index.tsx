@@ -1,13 +1,13 @@
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native'
-import * as WebBrowser from 'expo-web-browser'
+import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { useAuthStore } from '../../src/auth/store'
-import { usePaymentLink, useFeeDetails, useFeatures } from '../../src/api/queries'
+import { useAuthStore } from '../../../src/auth/store'
+import { usePaymentLink, useFeeDetails, useFeatures } from '../../../src/api/queries'
 import { useState } from 'react'
-import { NetworkStatusBanner } from '../../src/components/NetworkStatusBanner'
-import { NotificationStatusBanner } from '../../src/components/NotificationStatusBanner'
-import { AppBackground } from '../../src/components/AppBackground'
-import { FeatureDisabled } from '../../src/components/FeatureDisabled'
+import { NetworkStatusBanner } from '../../../src/components/NetworkStatusBanner'
+import { NotificationStatusBanner } from '../../../src/components/NotificationStatusBanner'
+import { AppBackground } from '../../../src/components/AppBackground'
+import { FeatureDisabled } from '../../../src/components/FeatureDisabled'
 
 const GREEN = '#05245F'
 const GREEN_LIGHT = '#DCE8FA'
@@ -27,9 +27,9 @@ export default function PaymentScreen() {
   const { data: features } = useFeatures()
   const [expanded, setExpanded] = useState(false)
 
-  async function handlePay() {
+  function handlePay() {
     if (link?.url) {
-      await WebBrowser.openBrowserAsync(link.url)
+      router.push('/(app)/payment/webview')
     }
   }
 

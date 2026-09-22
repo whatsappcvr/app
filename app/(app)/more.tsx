@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store'
 import { useAuthStore } from '../../src/auth/store'
 import { AppBackground } from '../../src/components/AppBackground'
 import { unregisterPushNotifications } from '../../src/notifications/register'
+import { useNotificationsStore } from '../../src/notifications/store'
 
 const GREEN = '#05245F'
 const GREEN_LIGHT = '#DCE8FA'
@@ -66,6 +67,7 @@ export default function MoreScreen() {
           // Must run before the JWT is cleared — the request needs to be authenticated.
           await unregisterPushNotifications()
           useAuthStore.getState().logout()
+          useNotificationsStore.getState().clear()
           await Promise.all([
             SecureStore.deleteItemAsync('jwt_parent'),
             SecureStore.deleteItemAsync('jwt_student'),

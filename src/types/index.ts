@@ -158,7 +158,10 @@ export interface SemesterCourseResult {
   external_marks: string
   total_marks: string
   grade: string
+  grade_point: number | null
   credits: string
+  exam_type: string | null
+  reattempted: boolean
 }
 
 export interface SemesterResult {

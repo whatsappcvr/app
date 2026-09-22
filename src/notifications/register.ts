@@ -1,50 +1,37 @@
-import * as Notifications from 'expo-notifications'
-import Constants from 'expo-constants'
-import { Platform } from 'react-native'
+import { getMessaging, getToken } from '@react-native-firebase/messaging'
+import { Platform, PermissionsAndroid } from 'react-native'
 import { client } from '../api/client'
+import { ensureDefaultChannel } from './channel'
 
 export async function registerForPushNotifications(): Promise<string | null> {
-  // Set up Android notification channel first (required before requesting permission on Android 13+)
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'Default',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-    })
-  }
-
-  const { status: existingStatus } = await Notifications.getPermissionsAsync()
-  let finalStatus = existingStatus
-
-  if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync({
-      android: {
-        allowAlert: true,
-        allowBadge: true,
-        allowSound: true,
-      },
-    })
-    finalStatus = status
-  }
-
-  if (finalStatus !== 'granted') {
+  // iOS push isn't implemented — it needs its own native APNs module
+  // (Apple Developer credentials + a Mac build), tracked as a separate
+  // follow-up. Nothing here runs on iOS until that lands.
+  if (Platform.OS !== 'android') {
     return null
   }
 
-  // Get Expo push token
-  const projectId = Constants.expoConfig?.extra?.eas?.projectId
+  await ensureDefaultChannel()
+
+  if (Platform.Version >= 33) {
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+    )
+    if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+      return null
+    }
+  }
+
+  // Raw FCM registration token — delivered to and displayed by this app
+  // directly (see handlers.ts / index.js), no relay service involved.
   let token: string
   try {
-    const tokenData = await Notifications.getExpoPushTokenAsync(
-      projectId ? { projectId } : undefined,
-    )
-    token = tokenData.data
+    token = await getToken(getMessaging())
   } catch (err) {
-    console.warn('[push] failed to get Expo push token', err)
+    console.warn('[push] failed to get FCM token', err)
     return null
   }
 
-  // Register with backend
   try {
     await client.post('/device-tokens', {
       token,

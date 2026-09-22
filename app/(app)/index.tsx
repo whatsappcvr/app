@@ -2,21 +2,39 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl } 
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/auth/store'
-import { useSemesterAttendance, useFeeDetails, useSemesterResults, useMentor, useFeatures } from '../../src/api/queries'
-import { useNotificationsStore } from '../../src/notifications/store'
+import { useSemesterAttendance, useFeeDetails, useSemesterResults, useMentor, useFeatures, useCirculars } from '../../src/api/queries'
 import { useState, useCallback } from 'react'
 import Svg, { Circle } from 'react-native-svg'
 import { NetworkStatusBanner } from '../../src/components/NetworkStatusBanner'
 import { NotificationStatusBanner } from '../../src/components/NotificationStatusBanner'
 import { AppBackground } from '../../src/components/AppBackground'
+import type { Circular } from '../../src/types'
 
-const ORANGE = '#D99A00'
 const GREEN = '#05245F'
 const GREEN_LIGHT = '#DCE8FA'
 const GREEN_ACCENT = '#073B8F'
 const RED = '#C94343'
-const BLUE = '#0A4AA8'
 const ATTENDANCE_GOOD = '#168B72'
+const ORANGE = '#D99A00'
+
+const circularCategoryColors: Record<string, { bg: string; text: string }> = {
+  holiday: { bg: '#FBF0D9', text: ORANGE },
+  exam: { bg: '#F6E2E2', text: '#C62828' },
+  general: { bg: GREEN_LIGHT, text: GREEN_ACCENT },
+}
+const defaultCircularCategory = { bg: '#F5F5F5', text: '#616161' }
+
+function circularRelativeDate(dateStr: string): string {
+  const diffMs = Date.now() - new Date(dateStr).getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays < 7) return `${diffDays}d ago`
+  return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+}
 
 // Splits a course/department label so a trailing "(...)" specialization
 // never gets torn across the paren boundary when the line wraps.
@@ -26,29 +44,6 @@ function splitCourseLabel(label: string): { main: string; paren: string | null }
     return { main: match[1], paren: match[2] }
   }
   return { main: label, paren: null }
-}
-
-function timeAgo(dateStr: string): string {
-  const now = Date.now()
-  const then = new Date(dateStr).getTime()
-  const seconds = Math.floor((now - then) / 1000)
-  if (seconds < 60) return 'Just now'
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes} min ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`
-  return new Date(dateStr).toLocaleDateString()
-}
-
-function notifDotColor(type: string): string {
-  switch (type) {
-    case 'absence': return RED
-    case 'fee': return ORANGE
-    case 'result': return BLUE
-    default: return GREEN_ACCENT
-  }
 }
 
 function AttendanceRing({ percentage }: { percentage: number }) {
@@ -88,14 +83,15 @@ export default function DashboardScreen() {
   const fees = useFeeDetails(roll)
   const mentor = useMentor(roll)
   const { data: features, refetch: refetchFeatures } = useFeatures()
-  const recentNotifications = useNotificationsStore((s) => s.items).slice(0, 5)
+  const circulars = useCirculars()
+  const recentCirculars = circulars.data?.slice(0, 5) ?? []
 
   const [refreshing, setRefreshing] = useState(false)
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
-    await Promise.all([attendance.refetch(), results.refetch(), fees?.refetch?.(), mentor.refetch(), refetchFeatures()])
+    await Promise.all([attendance.refetch(), results.refetch(), fees?.refetch?.(), mentor.refetch(), refetchFeatures(), circulars.refetch()])
     setRefreshing(false)
-  }, [attendance, results, fees, mentor, refetchFeatures])
+  }, [attendance, results, fees, mentor, refetchFeatures, circulars])
 
   const attendanceEnabled = features?.attendance_overview ?? true
   const resultsEnabled = features?.results_semester ?? true
@@ -215,39 +211,39 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Recent Notifications */}
+      {/* Circulars Section */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Recent Notifications</Text>
-        {recentNotifications.length > 0 ? (
-          <TouchableOpacity onPress={() => router.push('/(app)/notifications')}>
-            <Text style={styles.viewAll}>View All</Text>
-          </TouchableOpacity>
-        ) : null}
+        <Text style={styles.sectionTitle}>Circulars</Text>
+        <TouchableOpacity onPress={() => router.push('/(app)/circulars')} activeOpacity={0.7}>
+          <Text style={styles.sectionLink}>View all</Text>
+        </TouchableOpacity>
       </View>
-      {recentNotifications.length === 0 ? (
-        <View style={styles.emptyNotif}>
-          <Ionicons name="notifications-off-outline" size={22} color="#8A98AD" />
-          <Text style={styles.emptyNotifText}>No recent notifications</Text>
+      {recentCirculars.length === 0 ? (
+        <View style={styles.circularsEmpty}>
+          <Ionicons name="megaphone-outline" size={28} color="#ccc" />
+          <Text style={styles.circularsEmptyText}>No circulars yet.</Text>
         </View>
       ) : (
-        recentNotifications.map((n) => (
-          <TouchableOpacity
-            key={n.id}
-            style={styles.notifItem}
-            onPress={() =>
-              n.data?.circular_id
-                ? router.push(`/(app)/circulars/${n.data.circular_id}`)
-                : router.push('/(app)/notifications')
-            }
-          >
-            <View style={[styles.notifDot, { backgroundColor: notifDotColor(n.type) }]} />
-            <View style={styles.notifContent}>
-              <Text style={styles.notifTitle} numberOfLines={2}>{n.title || 'Not available'}</Text>
-              <Text style={styles.notifBody} numberOfLines={2}>{n.body || 'Not provided'}</Text>
-            </View>
-            <Text style={styles.notifTime}>{timeAgo(n.created_at)}</Text>
-          </TouchableOpacity>
-        ))
+        recentCirculars.map((item: Circular) => {
+          const cc = circularCategoryColors[item.category] ?? defaultCircularCategory
+          return (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.circularCard}
+              onPress={() => router.push(`/(app)/circulars/${item.id}`)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.circularHeader}>
+                <View style={[styles.circularBadge, { backgroundColor: cc.bg }]}>
+                  <Text style={[styles.circularBadgeText, { color: cc.text }]}>{item.category}</Text>
+                </View>
+                <Text style={styles.circularDate}>{circularRelativeDate(item.published_at)}</Text>
+              </View>
+              <Text style={styles.circularTitle} numberOfLines={1}>{item.title}</Text>
+              <Text style={styles.circularBody} numberOfLines={2}>{item.body}</Text>
+            </TouchableOpacity>
+          )
+        })
       )}
       </ScrollView>
     </AppBackground>
@@ -298,24 +294,19 @@ const styles = StyleSheet.create({
   nextClassTime: { fontSize: 13, color: '#000', marginTop: 'auto', paddingTop: 8 },
   mentorName: { fontSize: 13, fontWeight: '700', color: '#1a1a1a', marginTop: 4, flexWrap: 'wrap' },
 
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
-  viewAll: { fontSize: 13, fontWeight: '600', color: GREEN_ACCENT },
-
-  notifItem: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12,
-    padding: 14, marginBottom: 8, elevation: 1,
-    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 10 },
+  sectionTitle: { fontSize: 17, fontWeight: '700', color: GREEN },
+  sectionLink: { fontSize: 13, fontWeight: '600', color: GREEN_ACCENT },
+  circularsEmpty: { alignItems: 'center', paddingVertical: 24, backgroundColor: '#fff', borderRadius: 16 },
+  circularsEmptyText: { fontSize: 13, color: '#000', marginTop: 8 },
+  circularCard: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10,
+    elevation: 1, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
   },
-  notifDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: RED, marginRight: 12 },
-  notifContent: { flex: 1, marginRight: 8 },
-  notifTitle: { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
-  notifBody: { fontSize: 12, color: '#000', marginTop: 2 },
-  notifTime: { fontSize: 11, color: '#000' },
-
-  emptyNotif: {
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderRadius: 12,
-    paddingVertical: 28, gap: 8,
-  },
-  emptyNotifText: { fontSize: 13, color: '#8A98AD' },
+  circularHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  circularBadge: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 8 },
+  circularBadgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  circularDate: { fontSize: 11, color: '#000' },
+  circularTitle: { fontSize: 14, fontWeight: '700', color: '#1a1a1a', marginBottom: 4 },
+  circularBody: { fontSize: 12, color: '#000', lineHeight: 17 },
 })

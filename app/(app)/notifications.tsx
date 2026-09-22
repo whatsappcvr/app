@@ -1,7 +1,9 @@
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { useState } from 'react'
-import { useNotificationsStore, type StoredNotification } from '../../src/notifications/store'
+import { router } from 'expo-router'
+import { useMemo, useState } from 'react'
+import { useNotificationsStore, isVisibleForRolls, type StoredNotification } from '../../src/notifications/store'
+import { useAuthStore } from '../../src/auth/store'
 import { NetworkStatusBanner } from '../../src/components/NetworkStatusBanner'
 import { NotificationStatusBanner } from '../../src/components/NotificationStatusBanner'
 import { AppBackground } from '../../src/components/AppBackground'
@@ -43,10 +45,10 @@ function getFilterForType(type: string): Filter {
   return 'general'
 }
 
-function NotificationItem({ item }: { item: StoredNotification }) {
+function NotificationItem({ item, onPress }: { item: StoredNotification; onPress: () => void }) {
   const cfg = typeConfig[item.type] ?? typeConfig.general
   return (
-    <View style={ni.container}>
+    <TouchableOpacity style={[ni.container, !item.read && ni.containerUnread]} onPress={onPress} activeOpacity={0.7}>
       <View style={[ni.iconWrap, { backgroundColor: cfg.bg }]}>
         <Ionicons name={cfg.icon as any} size={20} color={cfg.color} />
       </View>
@@ -54,8 +56,11 @@ function NotificationItem({ item }: { item: StoredNotification }) {
         <Text style={ni.title}>{item.title}</Text>
         <Text style={ni.body} numberOfLines={2}>{item.body}</Text>
       </View>
-      <Text style={ni.time}>{timeAgo(item.created_at)}</Text>
-    </View>
+      <View style={ni.right}>
+        <Text style={ni.time}>{timeAgo(item.created_at)}</Text>
+        {!item.read && <View style={ni.unreadDot} />}
+      </View>
+    </TouchableOpacity>
   )
 }
 
@@ -64,20 +69,39 @@ const ni = StyleSheet.create({
     flexDirection: 'row', backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 8,
     elevation: 1, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
   },
+  containerUnread: { backgroundColor: GREEN_LIGHT },
   iconWrap: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   content: { flex: 1, marginRight: 8 },
   title: { fontSize: 14, fontWeight: '600', color: '#1a1a1a', flexWrap: 'wrap' },
   body: { fontSize: 13, color: '#000', marginTop: 3, lineHeight: 18, flexWrap: 'wrap' },
-  time: { fontSize: 11, color: '#000', marginTop: 2, flexShrink: 0 },
+  right: { alignItems: 'flex-end', flexShrink: 0, gap: 6 },
+  time: { fontSize: 11, color: '#000' },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: GREEN_ACCENT },
 })
 
 export default function NotificationsScreen() {
   const items = useNotificationsStore((s) => s.items)
+  const markRead = useNotificationsStore((s) => s.markRead)
+  // Select the wards array itself, then derive roll numbers with useMemo —
+  // mapping inside the zustand selector returns a new array every render,
+  // which reads as a store change and re-renders forever ("Maximum update
+  // depth exceeded").
+  const wards = useAuthStore((s) => s.wards)
+  const wardRolls = useMemo(() => wards.map((w) => w.roll_number), [wards])
   const [filter, setFilter] = useState<Filter>('all')
 
+  const visible = items.filter((n) => isVisibleForRolls(n, wardRolls))
+
+  const handlePress = (item: StoredNotification) => {
+    markRead(item.id)
+    if (item.data?.circular_id) {
+      router.push(`/(app)/circulars/${item.data.circular_id}`)
+    }
+  }
+
   const filtered = filter === 'all'
-    ? items
-    : items.filter((n) => getFilterForType(n.type) === filter)
+    ? visible
+    : visible.filter((n) => getFilterForType(n.type) === filter)
 
   const filters: { key: Filter; label: string }[] = [
     { key: 'all', label: 'All' },
@@ -107,7 +131,7 @@ export default function NotificationsScreen() {
         contentContainerStyle={styles.content}
         data={filtered}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <NotificationItem item={item} />}
+        renderItem={({ item }) => <NotificationItem item={item} onPress={() => handlePress(item)} />}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name="notifications-off-outline" size={48} color="#ddd" />

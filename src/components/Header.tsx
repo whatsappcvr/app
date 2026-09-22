@@ -1,8 +1,9 @@
 import { View, Text, Image, TouchableOpacity, StyleSheet, Modal, FlatList, Pressable } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useAuthStore } from '../auth/store'
+import { useNotificationsStore, isVisibleForRolls } from '../notifications/store'
 
 export function Avatar({ name, size = 36 }: { name: string; size?: number }) {
   const initial = (name || '?')[0].toUpperCase()
@@ -44,6 +45,43 @@ const brand = StyleSheet.create({
   textWrap: { flexShrink: 1 },
   title: { fontSize: 19, fontWeight: '700', color: '#05245F', letterSpacing: 1, paddingHorizontal: 2, width: '100%' },
   subtitle: { fontSize: 11, color: '#000', marginTop: -2, paddingHorizontal: 2, width: '100%' },
+})
+
+export function NotificationBell() {
+  // Select the wards array itself (a stable reference from the store), then
+  // derive roll numbers with useMemo — mapping inside the zustand selector
+  // returns a new array every render, which Notifications' subscription
+  // treats as a store change and re-renders forever ("Maximum update depth
+  // exceeded").
+  const wards = useAuthStore((s) => s.wards)
+  const wardRolls = useMemo(() => wards.map((w) => w.roll_number), [wards])
+  const unreadCount = useNotificationsStore(
+    (s) => s.items.filter((n) => !n.read && isVisibleForRolls(n, wardRolls)).length,
+  )
+
+  return (
+    <TouchableOpacity
+      style={bell.container}
+      onPress={() => router.push('/(app)/notifications')}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+    >
+      <Ionicons name="notifications-outline" size={24} color="#10213F" />
+      {unreadCount > 0 && (
+        <View style={bell.badge}>
+          <Text style={bell.badgeText} numberOfLines={1}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  )
+}
+
+const bell = StyleSheet.create({
+  container: { paddingHorizontal: 8, justifyContent: 'center', alignItems: 'center' },
+  badge: {
+    position: 'absolute', top: 0, right: 2, backgroundColor: '#C94343', borderRadius: 9,
+    minWidth: 18, height: 18, paddingHorizontal: 3, justifyContent: 'center', alignItems: 'center',
+  },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 })
 
 export function WardSwitcher({ compact = false }: { compact?: boolean }) {

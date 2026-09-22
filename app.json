@@ -30,13 +30,6 @@
       "expo-web-browser",
       "expo-status-bar",
       [
-        "expo-notifications",
-        {
-          "icon": "./assets/android-icon-monochrome.png",
-          "color": "#1a73e8"
-        }
-      ],
-      [
         "expo-splash-screen",
         {
           "backgroundColor": "#FFFFFF",
@@ -44,7 +37,9 @@
           "imageWidth": 160,
           "resizeMode": "contain"
         }
-      ]
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging"
     ],
     "extra": {
       "eas": {

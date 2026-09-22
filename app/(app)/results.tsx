@@ -18,6 +18,9 @@ type SubTab = 'mid_1' | 'mid_2' | 'sem_end'
 
 const dash = (v: string | number | null | undefined) => (v === null || v === undefined || v === '' ? '-' : v)
 
+const gradeDisplay = (grade: string | null | undefined, gradePoint: number | null | undefined) =>
+  grade ? (gradePoint != null ? `${grade} (${gradePoint})` : grade) : '-'
+
 function SemesterPicker({
   semesters,
   activeSem,
@@ -104,6 +107,10 @@ export default function ResultsScreen() {
   const semMids = midData.filter((m) => m.semester === effectiveSem)
   const semAssignments = assignmentData.filter((a) => a.semester === effectiveSem)
   const semEndResult = semData.find((s) => s.semester === effectiveSem)
+  const reattemptedCourses = useMemo(
+    () => semEndResult?.courses.filter((c) => c.reattempted) ?? [],
+    [semEndResult]
+  )
 
   const hasMid1 = semMids.some((m) => m.mid_type === 'mid_1')
   const hasMid2 = semMids.some((m) => m.mid_type === 'mid_2')
@@ -210,10 +217,40 @@ export default function ResultsScreen() {
                       <Text style={styles.courseCode}>{dash(c.course_code)}</Text>
                     </View>
                     <Text style={styles.td}>{dash(c.credits)}</Text>
-                    <Text style={[styles.td, styles.tdBold]}>{dash(c.grade)}</Text>
+                    <Text style={[styles.td, styles.tdBold]}>{gradeDisplay(c.grade, c.grade_point)}</Text>
                   </View>
                 ))}
               </View>
+
+              {/* Backlog / Supplementary / Revaluation / Recorrection results */}
+              {reattemptedCourses.length > 0 && (
+                <View style={[styles.tableCard, styles.backlogCard]}>
+                  <Text style={styles.backlogTitle}>Backlog / Revaluation Results</Text>
+                  <View style={styles.tableHeader}>
+                    <Text style={[styles.th, { flex: 2.5, textAlign: 'left' }]}>Subject</Text>
+                    <Text style={styles.th}>Type</Text>
+                    <Text style={styles.th}>Grade</Text>
+                  </View>
+                  {reattemptedCourses.map((c) => (
+                    <View key={c.course_code} style={styles.tableRow}>
+                      <View style={{ flex: 2.5 }}>
+                        <Text style={styles.courseName}>{dash(c.course_name)}</Text>
+                        <Text style={styles.courseCode}>{dash(c.course_code)}</Text>
+                      </View>
+                      <Text style={styles.td}>{dash(c.exam_type)}</Text>
+                      <Text
+                        style={[
+                          styles.td,
+                          styles.tdBold,
+                          c.grade === 'F' || c.grade === 'Ab' ? styles.tdFail : styles.tdPass,
+                        ]}
+                      >
+                        {gradeDisplay(c.grade, c.grade_point)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </>
           ) : (
             <Text style={styles.empty}>Result not published yet.</Text>
@@ -315,4 +352,9 @@ const styles = StyleSheet.create({
   courseCode: { fontSize: 11, color: '#000', marginTop: 1 },
   td: { flex: 1, fontSize: 13, color: '#333', textAlign: 'center' },
   tdBold: { fontWeight: '700', color: GREEN },
+  tdPass: { color: '#1B8A3D' },
+  tdFail: { color: '#C62828' },
+
+  backlogCard: { marginTop: 16, borderWidth: 1, borderColor: '#F3D9A0' },
+  backlogTitle: { fontSize: 14, fontWeight: '700', color: '#8A5A00', marginBottom: 10 },
 })
