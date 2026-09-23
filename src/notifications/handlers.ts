@@ -2,14 +2,12 @@ import { getMessaging, onMessage, type RemoteMessage } from '@react-native-fireb
 import notifee, { EventType } from '@notifee/react-native'
 import { router } from 'expo-router'
 import { useEffect } from 'react'
-import { AppState } from 'react-native'
 import { useNotificationsStore } from './store'
 import { useAuthStore } from '../auth/store'
-import { client } from '../api/client'
 import { ensureDefaultChannel } from './channel'
 import { contentNotificationId } from './id'
 
-function storeNotification(id: string, data: Record<string, string> | undefined) {
+export function storeNotification(id: string, data: Record<string, string> | undefined) {
   // Circulars aren't logged server-side and have no place in the
   // Notifications feed — their content lives only in GET /circulars, and
   // the circular screens read straight from there.
@@ -72,32 +70,14 @@ async function displayNotification(data: Record<string, string> | undefined, id:
   })
 }
 
-export async function syncFromServer() {
-  if (!useAuthStore.getState().isAuthenticated) return
-  try {
-    const { data } = await client.get<{ id: number; title: string; body: string; type: string; data?: Record<string, string>; created_at: string }[]>(
-      '/notifications', { params: { limit: 50 } },
-    )
-    const mapped = data.map((n) => ({
-      id: `server-${n.id}`,
-      title: n.title,
-      body: n.body,
-      type: n.type,
-      data: n.data ?? undefined,
-      created_at: n.created_at,
-    }))
-    useNotificationsStore.getState().mergeFromServer(mapped)
-  } catch {
-    // silent — push-delivered notifications still work
-  }
-}
-
 export function useNotificationHandlers() {
   useEffect(() => {
     // App in foreground when the push arrives.
     const unsubOnMessage = onMessage(getMessaging(), async (remoteMessage: RemoteMessage) => {
       const data = remoteMessage.data as Record<string, string> | undefined
-      await displayNotification(data, contentNotificationId(data))
+      const id = contentNotificationId(data)
+      storeNotification(id, data)
+      await displayNotification(data, id)
     })
 
     // Tap on a notification while the app is running (foreground, or was
@@ -121,18 +101,9 @@ export function useNotificationHandlers() {
       }
     })
 
-    // Sync notification history from server on mount
-    syncFromServer()
-
-    // Re-sync when app comes back to foreground
-    const appStateSub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') syncFromServer()
-    })
-
     return () => {
       unsubOnMessage()
       unsubForegroundEvent()
-      appStateSub.remove()
     }
   }, [])
 }

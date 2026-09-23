@@ -6,12 +6,15 @@ import { getMessaging, setBackgroundMessageHandler } from '@react-native-firebas
 import notifee from '@notifee/react-native'
 import { ensureDefaultChannel } from './src/notifications/channel'
 import { contentNotificationId } from './src/notifications/id'
+import { storeNotification } from './src/notifications/handlers'
 
 setBackgroundMessageHandler(getMessaging(), async (remoteMessage) => {
   const data = remoteMessage.data ?? {}
+  const id = contentNotificationId(data)
+  storeNotification(id, data)
   await ensureDefaultChannel()
   await notifee.displayNotification({
-    id: contentNotificationId(data),
+    id,
     title: data.title,
     body: data.body,
     android: {
