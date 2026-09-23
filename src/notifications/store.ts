@@ -41,7 +41,10 @@ interface NotificationsState {
   add: (notification: StoredNotification) => void
   mergeFromServer: (notifications: StoredNotification[]) => void
   markRead: (id: string) => void
-  markAllRead: () => void
+  // Takes the ids to mark rather than marking everything: the store is shared
+  // by every account on the device, and only the active account's visible
+  // items should be touched (see isVisibleForRolls).
+  markAllRead: (ids: string[]) => void
   clear: () => void
 }
 
@@ -73,8 +76,11 @@ export const useNotificationsStore = create<NotificationsState>()(
         set((state) => ({
           items: state.items.map((n) => (n.id === id ? { ...n, read: true } : n)),
         })),
-      markAllRead: () =>
-        set((state) => ({ items: state.items.map((n) => ({ ...n, read: true })) })),
+      markAllRead: (ids) =>
+        set((state) => {
+          const toMark = new Set(ids)
+          return { items: state.items.map((n) => (toMark.has(n.id) ? { ...n, read: true } : n)) }
+        }),
       clear: () => set({ items: [] }),
     }),
     {

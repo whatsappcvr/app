@@ -83,6 +83,7 @@ const ni = StyleSheet.create({
 export default function NotificationsScreen() {
   const items = useNotificationsStore((s) => s.items)
   const markRead = useNotificationsStore((s) => s.markRead)
+  const markAllRead = useNotificationsStore((s) => s.markAllRead)
   // Select the wards array itself, then derive roll numbers with useMemo —
   // mapping inside the zustand selector returns a new array every render,
   // which reads as a store change and re-renders forever ("Maximum update
@@ -98,6 +99,7 @@ export default function NotificationsScreen() {
   }, [])
 
   const visible = items.filter((n) => isVisibleForRolls(n, wardRolls))
+  const unreadIds = visible.filter((n) => !n.read).map((n) => n.id)
 
   const handlePress = (item: StoredNotification) => {
     markRead(item.id)
@@ -134,6 +136,20 @@ export default function NotificationsScreen() {
         ))}
       </View>
 
+      {unreadIds.length > 0 && (
+        <View style={styles.markAllBar}>
+          <Text style={styles.unreadText}>{unreadIds.length} unread</Text>
+          <TouchableOpacity
+            style={styles.markAllButton}
+            onPress={() => markAllRead(unreadIds)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="checkmark-done" size={16} color={GREEN_ACCENT} />
+            <Text style={styles.markAllText}>Mark all as read</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <FlatList
         contentContainerStyle={styles.content}
         data={filtered}
@@ -166,6 +182,14 @@ const styles = StyleSheet.create({
   filterTabActive: { backgroundColor: GREEN, borderColor: GREEN },
   filterText: { fontSize: 13, fontWeight: '600', color: '#000' },
   filterTextActive: { color: '#fff' },
+
+  markAllBar: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, paddingTop: 12,
+  },
+  unreadText: { fontSize: 13, fontWeight: '600', color: '#000' },
+  markAllButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  markAllText: { fontSize: 13, fontWeight: '600', color: GREEN_ACCENT },
 
   empty: { fontSize: 14, color: '#000', textAlign: 'center', marginTop: 12 },
   emptyWrap: { alignItems: 'center', marginTop: 60 },
