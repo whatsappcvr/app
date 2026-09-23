@@ -1,4 +1,10 @@
-import { getMessaging, onMessage, type RemoteMessage } from '@react-native-firebase/messaging'
+import {
+  getMessaging,
+  getInitialNotification,
+  onMessage,
+  onNotificationOpenedApp,
+  type RemoteMessage,
+} from '@react-native-firebase/messaging'
 import notifee, { EventType } from '@notifee/react-native'
 import { router } from 'expo-router'
 import { useEffect } from 'react'
@@ -36,11 +42,10 @@ function handleNotificationTap(data: Record<string, string> | undefined) {
   }
 }
 
-// FCM messages here are data-only (see backend send_fcm_push) — nothing
-// auto-displays them, so this is the single display path for every app
-// state. The background/quit-state equivalent lives in index.js and calls
-// this same notifee.displayNotification shape, so there's exactly one way
-// a push ever becomes a visible notification.
+// Foreground only. Pushes carry a `notification` block (see backend
+// send_fcm_push), which Android renders itself — but only while the app is
+// backgrounded or killed. In the foreground it hands the message to
+// onMessage instead and renders nothing, so this is what makes it visible.
 async function displayNotification(data: Record<string, string> | undefined, id: string) {
   await ensureDefaultChannel()
   await notifee.displayNotification({
@@ -87,8 +92,9 @@ export function useNotificationHandlers() {
       storeNotification(id, data)
     })
 
-    // Tap on a notification while the app is running (foreground, or was
-    // background and this tap just brought it forward).
+    // Tap on a notifee-displayed notification — i.e. one that arrived while
+    // the app was already in the foreground. System-rendered ones never
+    // reach notifee, so they're handled by the two messaging listeners below.
     const unsubForegroundEvent = notifee.onForegroundEvent(({ type, detail }) => {
       if (type === EventType.PRESS && detail.notification) {
         const data = detail.notification.data as Record<string, string> | undefined
@@ -97,13 +103,19 @@ export function useNotificationHandlers() {
       }
     })
 
-    // App was fully killed and got launched by a notification tap
-    // (notifee-displayed notification, so notifee is the source of truth
-    // for the tap event — not messaging's own getInitialNotification).
-    notifee.getInitialNotification().then((initial) => {
-      if (initial?.notification) {
-        const data = initial.notification.data as Record<string, string> | undefined
-        storeNotification(initial.notification.id ?? '', data)
+    // Tap on a system-rendered notification that brought the app forward
+    // from the background.
+    const unsubOpenedApp = onNotificationOpenedApp(getMessaging(), (remoteMessage: RemoteMessage) => {
+      const data = remoteMessage.data as Record<string, string> | undefined
+      storeNotification(contentNotificationId(data), data)
+      handleNotificationTap(data)
+    })
+
+    // Tap that cold-launched the app from a fully killed state.
+    getInitialNotification(getMessaging()).then((remoteMessage) => {
+      if (remoteMessage) {
+        const data = remoteMessage.data as Record<string, string> | undefined
+        storeNotification(contentNotificationId(data), data)
         handleNotificationTap(data)
       }
     })
@@ -119,6 +131,7 @@ export function useNotificationHandlers() {
     return () => {
       unsubOnMessage()
       unsubForegroundEvent()
+      unsubOpenedApp()
       appStateSub.remove()
     }
   }, [])
