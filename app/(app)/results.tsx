@@ -18,8 +18,8 @@ type SubTab = 'mid_1' | 'mid_2' | 'sem_end'
 
 const dash = (v: string | number | null | undefined) => (v === null || v === undefined || v === '' ? '-' : v)
 
-const gradeDisplay = (grade: string | null | undefined, gradePoint: number | null | undefined) =>
-  grade ? (gradePoint != null ? `${grade} (${gradePoint})` : grade) : '-'
+const gradeDisplay = (grade: string | null | undefined, gradePoint: string | null | undefined) =>
+  grade ? (gradePoint ? `${grade} (${gradePoint})` : grade) : '-'
 
 function SemesterPicker({
   semesters,

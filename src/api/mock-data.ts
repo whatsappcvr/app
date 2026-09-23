@@ -241,12 +241,12 @@ export const MOCK_SEMESTER_RESULTS: SemesterResult[] = [
     sgpa: '8.90',
     cgpa: '8.72',
     courses: [
-      { course_code: 'CS501', course_name: 'Data Structures', internal_marks: '32', external_marks: '52', total_marks: '84', grade: 'A+', grade_point: 9, credits: '3', exam_type: 'Regular', reattempted: false },
-      { course_code: 'CS502', course_name: 'Operating Systems', internal_marks: '35', external_marks: '50', total_marks: '85', grade: 'A+', grade_point: 9, credits: '3', exam_type: 'Regular', reattempted: false },
-      { course_code: 'CS503', course_name: 'Database Mgmt', internal_marks: '30', external_marks: '48', total_marks: '78', grade: 'A', grade_point: 8, credits: '3', exam_type: 'Regular', reattempted: false },
-      { course_code: 'CS504', course_name: 'Computer Networks', internal_marks: '32', external_marks: '46', total_marks: '78', grade: 'A', grade_point: 8, credits: '3', exam_type: 'Regular', reattempted: false },
-      { course_code: 'CS505', course_name: 'Software Engineering', internal_marks: '29', external_marks: '44', total_marks: '73', grade: 'A', grade_point: 8, credits: '3', exam_type: 'Regular', reattempted: false },
-      { course_code: 'CS506', course_name: 'AI & ML', internal_marks: '35', external_marks: '55', total_marks: '90', grade: 'S', grade_point: 10, credits: '3', exam_type: 'Regular', reattempted: false },
+{ course_code: 'CS501', course_name: 'Data Structures', internal_marks: '32', external_marks: '52', total_marks: '84', grade: 'A+', grade_point: '9', credits: '3', exam_type: 'Regular', reattempted: false },
+    { course_code: 'CS502', course_name: 'Operating Systems', internal_marks: '35', external_marks: '50', total_marks: '85', grade: 'A+', grade_point: '9', credits: '3', exam_type: 'Regular', reattempted: false },
+    { course_code: 'CS503', course_name: 'Database Mgmt', internal_marks: '30', external_marks: '48', total_marks: '78', grade: 'A', grade_point: '8', credits: '3', exam_type: 'Regular', reattempted: false },
+    { course_code: 'CS504', course_name: 'Computer Networks', internal_marks: '32', external_marks: '46', total_marks: '78', grade: 'A', grade_point: '8', credits: '3', exam_type: 'Regular', reattempted: false },
+    { course_code: 'CS505', course_name: 'Software Engineering', internal_marks: '29', external_marks: '44', total_marks: '73', grade: 'A', grade_point: '8', credits: '3', exam_type: 'Regular', reattempted: false },
+    { course_code: 'CS506', course_name: 'AI & ML', internal_marks: '35', external_marks: '55', total_marks: '90', grade: 'S', grade_point: '10', credits: '3', exam_type: 'Regular', reattempted: false },
     ],
   },
   {
@@ -254,10 +254,10 @@ export const MOCK_SEMESTER_RESULTS: SemesterResult[] = [
     sgpa: '8.60',
     cgpa: '8.55',
     courses: [
-      { course_code: 'CS401', course_name: 'Discrete Mathematics', internal_marks: '28', external_marks: '46', total_marks: '74', grade: 'A', grade_point: 8, credits: '4', exam_type: 'Regular', reattempted: false },
-      { course_code: 'CS402', course_name: 'Digital Logic Design', internal_marks: '30', external_marks: '50', total_marks: '80', grade: 'A+', grade_point: 9, credits: '4', exam_type: 'Regular', reattempted: false },
-      { course_code: 'CS403', course_name: 'Object Oriented Programming', internal_marks: '33', external_marks: '48', total_marks: '81', grade: 'A+', grade_point: 9, credits: '3', exam_type: 'Regular', reattempted: false },
-      { course_code: 'CS404', course_name: 'Data Communications', internal_marks: '27', external_marks: '45', total_marks: '72', grade: 'A', grade_point: 8, credits: '3', exam_type: 'Supplementary', reattempted: true },
+{ course_code: 'CS401', course_name: 'Discrete Mathematics', internal_marks: '28', external_marks: '46', total_marks: '74', grade: 'A', grade_point: '8', credits: '4', exam_type: 'Regular', reattempted: false },
+    { course_code: 'CS402', course_name: 'Digital Logic Design', internal_marks: '30', external_marks: '50', total_marks: '80', grade: 'A+', grade_point: '9', credits: '4', exam_type: 'Regular', reattempted: false },
+    { course_code: 'CS403', course_name: 'Object Oriented Programming', internal_marks: '33', external_marks: '48', total_marks: '81', grade: 'A+', grade_point: '9', credits: '3', exam_type: 'Regular', reattempted: false },
+    { course_code: 'CS404', course_name: 'Data Communications', internal_marks: '27', external_marks: '45', total_marks: '72', grade: 'A', grade_point: '8', credits: '3', exam_type: 'Supplementary', reattempted: true },
     ],
   },
 ]
