@@ -7,6 +7,7 @@ import { useNotificationsStore } from './store'
 import { useAuthStore } from '../auth/store'
 import { client } from '../api/client'
 import { ensureDefaultChannel } from './channel'
+import { contentNotificationId } from './id'
 
 function storeNotification(id: string, data: Record<string, string> | undefined) {
   // Circulars aren't logged server-side and have no place in the
@@ -65,12 +66,13 @@ async function displayNotification(data: Record<string, string> | undefined, id:
       channelId: 'default',
       pressAction: { id: 'default' },
       sound: 'default',
+      smallIcon: 'ic_notification',
     },
     data,
   })
 }
 
-async function syncFromServer() {
+export async function syncFromServer() {
   if (!useAuthStore.getState().isAuthenticated) return
   try {
     const { data } = await client.get<{ id: number; title: string; body: string; type: string; data?: Record<string, string>; created_at: string }[]>(
@@ -95,7 +97,7 @@ export function useNotificationHandlers() {
     // App in foreground when the push arrives.
     const unsubOnMessage = onMessage(getMessaging(), async (remoteMessage: RemoteMessage) => {
       const data = remoteMessage.data as Record<string, string> | undefined
-      await displayNotification(data, remoteMessage.messageId ?? String(Date.now()))
+      await displayNotification(data, contentNotificationId(data))
     })
 
     // Tap on a notification while the app is running (foreground, or was

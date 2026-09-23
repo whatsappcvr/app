@@ -10,6 +10,6 @@ export async function ensureDefaultChannel(): Promise<void> {
     id: 'default',
     name: 'Default',
     importance: AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
+    vibrationPattern: [250, 250, 250, 250],
   })
 }
