@@ -1,9 +1,10 @@
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native'
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useNotificationsStore, isVisibleForRolls, type StoredNotification } from '../../src/notifications/store'
 import { useAuthStore } from '../../src/auth/store'
+import { syncFromServer } from '../../src/notifications/handlers'
 import { NetworkStatusBanner } from '../../src/components/NetworkStatusBanner'
 import { NotificationStatusBanner } from '../../src/components/NotificationStatusBanner'
 import { AppBackground } from '../../src/components/AppBackground'
@@ -89,6 +90,12 @@ export default function NotificationsScreen() {
   const wards = useAuthStore((s) => s.wards)
   const wardRolls = useMemo(() => wards.map((w) => w.roll_number), [wards])
   const [filter, setFilter] = useState<Filter>('all')
+  const [refreshing, setRefreshing] = useState(false)
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true)
+    syncFromServer().finally(() => setRefreshing(false))
+  }, [])
 
   const visible = items.filter((n) => isVisibleForRolls(n, wardRolls))
 
@@ -132,6 +139,7 @@ export default function NotificationsScreen() {
         data={filtered}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <NotificationItem item={item} onPress={() => handlePress(item)} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[GREEN]} tintColor={GREEN} />}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name="notifications-off-outline" size={48} color="#ddd" />
