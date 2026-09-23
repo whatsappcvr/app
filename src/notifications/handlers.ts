@@ -2,25 +2,10 @@ import { getMessaging, onMessage, type RemoteMessage } from '@react-native-fireb
 import notifee, { EventType } from '@notifee/react-native'
 import { router } from 'expo-router'
 import { useEffect } from 'react'
-import { useNotificationsStore } from './store'
+import { storeNotification } from './store'
 import { useAuthStore } from '../auth/store'
 import { ensureDefaultChannel } from './channel'
 import { contentNotificationId } from './id'
-
-export function storeNotification(id: string, data: Record<string, string> | undefined) {
-  // Circulars aren't logged server-side and have no place in the
-  // Notifications feed — their content lives only in GET /circulars, and
-  // the circular screens read straight from there.
-  if (data?.type === 'circular') return
-  useNotificationsStore.getState().add({
-    id,
-    title: data?.title ?? '',
-    body: data?.body ?? '',
-    type: data?.type ?? 'general',
-    data,
-    created_at: new Date().toISOString(),
-  })
-}
 
 function handleNotificationTap(data: Record<string, string> | undefined) {
   if (!useAuthStore.getState().isAuthenticated) {
@@ -76,8 +61,8 @@ export function useNotificationHandlers() {
     const unsubOnMessage = onMessage(getMessaging(), async (remoteMessage: RemoteMessage) => {
       const data = remoteMessage.data as Record<string, string> | undefined
       const id = contentNotificationId(data)
-      storeNotification(id, data)
       await displayNotification(data, id)
+      storeNotification(id, data)
     })
 
     // Tap on a notification while the app is running (foreground, or was
